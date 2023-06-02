@@ -1,4 +1,11 @@
-﻿using System.Collections;
+﻿// Often in a 3D game, characters walk or run on slopes. Dynamic colliders on feet are not practical or useful,
+// so inverse kinematics is often utilized to place footing appropriately. Otherwise, one foot would be in the
+// air, and the other would be below the surface when on a slope.
+
+// Set a boolean variable in your player controller with an animation trigger, such that this script runs only
+// when the boolean is true. That way, IK can be turned on and off as the character is running or walking,
+// such that it is only activated when the characters foot in on or near the surface.
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -16,12 +23,14 @@ public class Player_IK : MonoBehaviour
 
     private float foot_ray()
     {
+	    // raycast must ignore the layer of the player character and any colliders associated with that layer
         if (Physics.Raycast(capsule_collider.bounds.center, -Vector3.up, out hit, 20f))
         {
             ref_point = hit.point;
+	    // Add the following game objects in mechanim skeletal hierarchy to script in inspector (left_foot, right_foot, & left_knee).
+	    // The three points are required for the mathematical operations below.
+	    // Normal vector of the surface plane is calculated, so that feet can be rotated and positioned appropriately.
             Plane plane = new Plane(left_foot.transform.position, right_foot.transform.position, left_knee.transform.position);
-            //            float Cos_theta = Vector3.Dot(hit.normal.normalized, plane.normal.normalized); // player.transform.forward.normalized);
-            //            Vector3 projection = hit.normal.normalized - (Cos_theta * plane.normal.normalized); // player.transform.forward.normalized);
             Vector3 projection = Vector3.ProjectOnPlane(hit.normal, plane.normal);
             Vector3 projection2 = Vector3.ProjectOnPlane(gameObject.transform.up, plane.normal);
             return Vector3.SignedAngle(projection, projection2, plane.normal);
@@ -35,7 +44,7 @@ public class Player_IK : MonoBehaviour
     private void OnAnimatorIK(int layerIndex)
 
     {
-        if (player_script.grounded == true)
+        if (player_script.IsGrounded())
         {
             float final_angle = foot_ray() * (3.1416f / 180f);
 
@@ -48,6 +57,7 @@ public class Player_IK : MonoBehaviour
             float left_pos = ref_point.y + 0.075f + (Mathf.Sin(final_angle) * half_dist_between_feet);
             float right_pos = ref_point.y + 0.075f - (Mathf.Sin(final_angle) * half_dist_between_feet);
 
+	    // Set foot position (auto).
             foot_anim.SetIKPosition(AvatarIKGoal.LeftFoot, new Vector3(left_foot.transform.position.x, left_pos, left_foot.transform.position.z));
             foot_anim.SetIKPosition(AvatarIKGoal.RightFoot, new Vector3(right_foot.transform.position.x, right_pos, right_foot.transform.position.z));
 
@@ -58,6 +68,7 @@ public class Player_IK : MonoBehaviour
                 Quaternion leftFootRot = Quaternion.LookRotation(slopeCorrected, hit.normal);
                 Quaternion rightFootRot = Quaternion.LookRotation(slopeCorrected, hit.normal);
 
+		// Set foot rotation (auto).
                 foot_anim.SetIKRotation(AvatarIKGoal.LeftFoot, leftFootRot);
                 foot_anim.SetIKRotation(AvatarIKGoal.RightFoot, rightFootRot);
             }
